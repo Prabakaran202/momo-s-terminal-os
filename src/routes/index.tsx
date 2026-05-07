@@ -1,26 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Terminal } from "@/components/Terminal";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "momo@hayase :~$ — Prabakaran P · Portfolio" },
+      {
+        name: "description",
+        content:
+          "Interactive terminal portfolio of Prabakaran P (alias Momo Hayase). Type `help` to explore projects, skills, and contact.",
+      },
+      { property: "og:title", content: "momo@hayase :~$ — Prabakaran P" },
+      {
+        property: "og:description",
+        content:
+          "A dark, hacker-aesthetic developer portfolio rendered as an interactive Linux terminal.",
+      },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
-
 function Index() {
-  return <PlaceholderIndex />;
+  return (
+    <main className="relative min-h-[100dvh] overflow-hidden bg-background">
+      <div className="grid-bg pointer-events-none absolute inset-0 opacity-50" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
+      <h1 className="sr-only">Prabakaran P — Momo Hayase — Developer Portfolio</h1>
+      <Terminal />
+      <div className="scanline" />
+      <div className="crt-overlay" />
+      <div className="crt-vignette" />
+    </main>
+  );
 }
