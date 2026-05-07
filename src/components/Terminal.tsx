@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PROFILE, ABOUT, SKILLS, PROJECTS, EXPERIENCE } from "@/lib/portfolio-data";
+import { PROFILE, ABOUT, SKILLS, EXPERIENCE, PROJECTS, type Project } from "@/lib/portfolio-data";
 
 type Line = {
   id: number;
@@ -8,64 +8,52 @@ type Line = {
 };
 
 const BANNER = String.raw`
-   __  ___                       __  __                          
-  /  |/  /___  ____ ___  ____   / / / /___ ___  ______ _________ 
- / /|_/ / __ \/ __ \`__ \/ __ \ / /_/ / __ \`/ / / / __ \`/ ___/ _ \
-/ /  / / /_/ / / / / / / /_/ // __  / /_/ / /_/ / /_/ (__  )  __/
-\_/  /_/\____/_/ /_/ /_/\____//_/ /_/\__,_/\__, /\__,_/____/\___/ 
-                                          /____/                  
+  ____                 _                         _          _           
+ |  _ \  _____   _____| | ___  _ __   ___ _ __  | |    __ _| |__  ___   
+ | | | |/ _ \ \ / / _ \ |/ _ \| '_ \ / _ \ '__| | |   / _\` | '_ \/ __|  
+ | |_| |  __/\ V /  __/ | (_) | |_) |  __/ |    | |__| (_| | |_) \__ \  
+ |____/ \___| \_/ \___|_|\___/| .__/ \___|_|    |_____\__,_|_.__/|___/  
+                              |_|                                       
 `;
 
 const BOOT_LINES = [
-  "[    0.000000] BIOS-provided physical RAM map ::",
-  "[    0.000123] Linux version 6.6.6-hayase (momo@hayase)",
-  "[    0.001834] Command line: BOOT_IMAGE=/momo root=/dev/portfolio ro quiet",
-  "[    0.012004] Detected CPU: hayase-cortex @ 4.20 GHz",
-  "[    0.045210] Memory: 64GB RAM available · 1.21GW reserved for caffeine",
-  "[    0.103482] Initializing terminal interface ........ [  OK  ]",
-  "[    0.184012] Mounting /dev/portfolio at / .......... [  OK  ]",
-  "[    0.231908] Loading kernel module: charisma.ko .... [  OK  ]",
-  "[    0.302561] Starting service: ssh-into-the-void ... [  OK  ]",
-  "[    0.430112] Bringing up loopback interface ........ [  OK  ]",
-  "[    0.512904] Establishing connection to /dev/null .. [  OK  ]",
-  "[    0.701032] Decrypting alias: Momo Hayase ......... [  OK  ]",
-  "[    0.812004] All systems nominal. Welcome, operator.",
+  "Initializing Developer Labs OS...",
+  "[ OK ] Mounting /dev/portfolio",
+  "[ OK ] Loading module: compiler",
+  "[ OK ] Loading module: backend",
+  "[ OK ] Loading module: ai-engine",
+  "[ OK ] Linking LLVM infrastructure",
+  "[ OK ] Spawning shell: bash 5.2",
+  "Welcome, Visitor. Type 'help' for available commands.",
 ];
 
-const CMD_HELP: Array<[string, string]> = [
+const HELP: Array<[string, string]> = [
   ["help", "show this list of commands"],
-  ["whoami", "print operator identity"],
-  ["about", "summary of who I am"],
-  ["skills", "tech stack & tools"],
-  ["projects", "list public projects"],
-  ["experience", "work history"],
-  ["contact", "ways to reach me"],
-  ["socials", "github / linkedin / twitter"],
-  ["ls", "list virtual filesystem"],
-  ["cat <file>", "print a file (try: cat about.txt)"],
-  ["sudo", "you do not have permission"],
-  ["matrix", "follow the white rabbit"],
-  ["clear", "wipe the terminal"],
-  ["exit", "...try it"],
+  ["cat about.txt", "display bio"],
+  ["cat skills.txt", "show technical skills"],
+  ["cat experience.txt", "show experience"],
+  ["ls projects/", "list all projects"],
+  ["cat projects/<name>", "show project details"],
+  ["open resume", "download CV"],
+  ["open github", "open GitHub profile"],
+  ["open tamizhi-forge", "open Tamizhi Forge IDE"],
+  ["whoami", "current operator"],
+  ["clear", "clear terminal"],
 ];
 
-const FILES: Record<string, string> = {
-  "about.txt": ABOUT,
-  "skills.json": JSON.stringify(SKILLS, null, 2),
-  "contact.txt": `email    :: ${PROFILE.email}\ngithub   :: ${PROFILE.github}\nlinkedin :: ${PROFILE.linkedin}\ntwitter  :: ${PROFILE.twitter}`,
-  "readme.md": `# ${PROFILE.name}\n\nalias: ${PROFILE.alias}\nrole : ${PROFILE.role}\n\nType \`help\` to explore.`,
-};
+const PROJECT_MAP: Record<string, Project> = Object.fromEntries(
+  PROJECTS.map((p) => [p.slug, p]),
+);
 
 let _id = 0;
 const nextId = () => ++_id;
 
-export function Terminal() {
+export function Terminal({ mobile = false }: { mobile?: boolean }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [input, setInput] = useState("");
-  const [booted, setBooted] = useState(false);
+  const [booted, setBooted] = useState(mobile);
   const [history, setHistory] = useState<string[]>([]);
   const [hIdx, setHIdx] = useState(-1);
-  const [matrix, setMatrix] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -73,70 +61,41 @@ export function Terminal() {
     setLines((prev) => [...prev, { ...line, id: nextId() }]);
   }, []);
 
-  // Boot sequence
-  useEffect(() => {
-    let cancelled = false;
-    let i = 0;
-    const tick = () => {
-      if (cancelled) return;
-      if (i < BOOT_LINES.length) {
-        push({ type: "system", content: BOOT_LINES[i] });
-        i++;
-        setTimeout(tick, 90 + Math.random() * 110);
-      } else {
-        push({ type: "ascii", content: BANNER });
+  const run = useCallback(
+    (raw: string, opts?: { silent?: boolean }) => {
+      const cmd = raw.trim();
+      if (!opts?.silent) {
         push({
-          type: "success",
+          type: "input",
           content: (
             <>
-              Welcome,{" "}
-              <span className="text-terminal-cyan">operator</span>. Type{" "}
-              <span className="text-terminal-yellow">help</span> to list commands.
+              <Prompt /> <span className="text-foreground">{raw}</span>
             </>
           ),
         });
-        setBooted(true);
       }
-    };
-    tick();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [lines]);
-
-  useEffect(() => {
-    if (booted) inputRef.current?.focus();
-  }, [booted]);
-
-  const focusInput = () => inputRef.current?.focus();
-
-  const run = useCallback(
-    (raw: string) => {
-      const cmd = raw.trim();
-      push({
-        type: "input",
-        content: (
-          <>
-            <Prompt /> <span className="text-foreground">{raw}</span>
-          </>
-        ),
-      });
       if (!cmd) return;
-      const [name, ...args] = cmd.split(/\s+/);
-      const lower = name.toLowerCase();
+      const lower = cmd.toLowerCase();
 
-      switch (lower) {
+      // Easter egg
+      if (lower === "sudo rm -rf /" || lower === "sudo rm -rf /*") {
+        push({
+          type: "error",
+          content: "Nice try. Developer Labs is indestructible. 💀",
+        });
+        return;
+      }
+
+      const [name, ...args] = cmd.split(/\s+/);
+      const arg = args.join(" ");
+
+      switch (name.toLowerCase()) {
         case "help":
           push({
             type: "output",
             content: (
               <div className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5">
-                {CMD_HELP.map(([c, d]) => (
+                {HELP.map(([c, d]) => (
                   <div key={c} className="contents">
                     <span className="text-terminal-yellow">{c}</span>
                     <span className="text-muted-foreground">— {d}</span>
@@ -151,138 +110,105 @@ export function Terminal() {
             type: "output",
             content: (
               <div>
-                <span className="text-terminal-cyan">{PROFILE.handle}</span>{" "}
-                <span className="text-muted-foreground">·</span>{" "}
-                <span>{PROFILE.name}</span>{" "}
-                <span className="text-muted-foreground">aka</span>{" "}
-                <span className="text-terminal-magenta">{PROFILE.alias}</span>
+                <span className="text-terminal-cyan">{PROFILE.handle}</span>
+                <div>{PROFILE.name} <span className="text-muted-foreground">aka</span> <span className="text-terminal-magenta">{PROFILE.alias}</span></div>
                 <div className="text-muted-foreground">{PROFILE.role}</div>
               </div>
             ),
           });
           break;
-        case "about":
-          push({ type: "output", content: <pre className="whitespace-pre-wrap">{ABOUT}</pre> });
-          break;
-        case "skills":
-          push({
-            type: "output",
-            content: (
-              <div className="space-y-1">
-                {Object.entries(SKILLS).map(([cat, items]) => (
-                  <div key={cat} className="flex flex-wrap gap-x-2">
-                    <span className="text-terminal-yellow w-24 inline-block">{cat}</span>
-                    <span className="text-muted-foreground">::</span>
-                    <span>{items.join("  ·  ")}</span>
-                  </div>
-                ))}
-              </div>
-            ),
-          });
-          break;
-        case "projects":
-          push({
-            type: "output",
-            content: (
-              <div className="space-y-3">
-                {PROJECTS.map((p) => (
-                  <div key={p.name} className="border-l-2 border-terminal-green/40 pl-3">
-                    <a
-                      href={p.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-terminal-cyan hover:underline"
-                    >
-                      ▸ {p.name}
-                    </a>
-                    <div className="text-foreground/90">{p.desc}</div>
-                    <div className="text-xs text-muted-foreground">
-                      [{p.stack.join(", ")}]
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ),
-          });
-          break;
-        case "experience":
-        case "exp":
-          push({
-            type: "output",
-            content: (
-              <div className="space-y-2">
-                {EXPERIENCE.map((e) => (
-                  <div key={e.when}>
-                    <span className="text-terminal-yellow">{e.when}</span>{" "}
-                    <span className="text-terminal-magenta">{e.where}</span>
-                    <div className="text-muted-foreground pl-4">↳ {e.what}</div>
-                  </div>
-                ))}
-              </div>
-            ),
-          });
-          break;
-        case "contact":
-          push({ type: "output", content: <pre className="whitespace-pre-wrap">{FILES["contact.txt"]}</pre> });
-          break;
-        case "socials":
-          push({
-            type: "output",
-            content: (
-              <div className="flex flex-col gap-1">
-                <a className="text-terminal-cyan hover:underline" href={PROFILE.github} target="_blank" rel="noreferrer">→ github.com/momohayase</a>
-                <a className="text-terminal-cyan hover:underline" href={PROFILE.linkedin} target="_blank" rel="noreferrer">→ linkedin.com/in/prabakaran-p</a>
-                <a className="text-terminal-cyan hover:underline" href={PROFILE.twitter} target="_blank" rel="noreferrer">→ twitter.com/momohayase</a>
-              </div>
-            ),
-          });
-          break;
-        case "ls": {
-          const files = Object.keys(FILES);
-          push({
-            type: "output",
-            content: (
-              <div className="flex flex-wrap gap-x-4">
-                {files.map((f) => (
-                  <span key={f} className="text-terminal-cyan">{f}</span>
-                ))}
-                <span className="text-terminal-yellow">projects/</span>
-                <span className="text-terminal-yellow">.secrets/</span>
-              </div>
-            ),
-          });
-          break;
-        }
         case "cat": {
-          const file = args[0];
-          if (!file) {
+          if (!arg) {
             push({ type: "error", content: "cat: missing file operand" });
             break;
           }
-          if (FILES[file]) {
-            push({ type: "output", content: <pre className="whitespace-pre-wrap">{FILES[file]}</pre> });
+          if (arg === "about.txt" || arg === "about") {
+            push({ type: "output", content: <pre className="whitespace-pre-wrap">{ABOUT}</pre> });
+          } else if (arg === "skills.txt" || arg === "skills") {
+            push({ type: "output", content: <pre className="whitespace-pre-wrap">{SKILLS}</pre> });
+          } else if (arg === "experience.txt" || arg === "experience") {
+            push({ type: "output", content: <pre className="whitespace-pre-wrap">{EXPERIENCE}</pre> });
+          } else if (arg.startsWith("projects/")) {
+            const slug = arg.replace(/^projects\//, "").replace(/\.txt$/, "");
+            const p = PROJECT_MAP[slug];
+            if (!p) {
+              push({ type: "error", content: `cat: projects/${slug}: No such file or directory` });
+            } else {
+              push({ type: "output", content: <ProjectCard p={p} /> });
+            }
           } else {
-            push({ type: "error", content: `cat: ${file}: No such file or directory` });
+            push({ type: "error", content: `cat: ${arg}: No such file or directory` });
           }
           break;
         }
-        case "sudo":
-          push({
-            type: "error",
-            content: `[sudo] password for momo: ✗ ✗ ✗\nmomo is not in the sudoers file. This incident will be reported.`,
-          });
+        case "ls": {
+          const target = arg.replace(/\/$/, "");
+          if (!arg || target === "" || target === "." || target === "~") {
+            push({
+              type: "output",
+              content: (
+                <div className="flex flex-wrap gap-x-4">
+                  <span className="text-terminal-cyan">about.txt</span>
+                  <span className="text-terminal-cyan">skills.txt</span>
+                  <span className="text-terminal-cyan">experience.txt</span>
+                  <span className="text-terminal-yellow">projects/</span>
+                </div>
+              ),
+            });
+          } else if (target === "projects") {
+            push({
+              type: "output",
+              content: (
+                <div>
+                  <div className="mb-2 text-terminal-magenta">── The Tamizhi Ecosystem ──</div>
+                  <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                    {PROJECTS.map((p) => (
+                      <button
+                        key={p.slug}
+                        onClick={() => run(`cat projects/${p.slug}`)}
+                        className="text-left text-terminal-cyan hover:underline"
+                      >
+                        ▸ {p.slug}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    hint: cat projects/&lt;name&gt;
+                  </div>
+                </div>
+              ),
+            });
+          } else {
+            push({ type: "error", content: `ls: cannot access '${arg}': No such file or directory` });
+          }
           break;
-        case "matrix":
-          setMatrix(true);
-          push({ type: "success", content: "Wake up, Neo… (click anywhere to exit)" });
+        }
+        case "open": {
+          if (!arg) {
+            push({ type: "error", content: "open: usage — open <resume|github|tamizhi-forge>" });
+            break;
+          }
+          const t = arg.toLowerCase();
+          if (t === "resume" || t === "cv") {
+            push({ type: "success", content: "Triggering CV download…" });
+            const a = document.createElement("a");
+            a.href = PROFILE.resume;
+            a.download = "Prabakaran-P-Resume.pdf";
+            a.click();
+          } else if (t === "github") {
+            push({ type: "success", content: `Opening ${PROFILE.github}` });
+            window.open(PROFILE.github, "_blank", "noopener,noreferrer");
+          } else if (t === "tamizhi-forge" || t === "forge" || t === "ide") {
+            push({ type: "success", content: "Launching Tamizhi Forge IDE ↗" });
+            window.open(PROFILE.tamizhiForge, "_blank", "noopener,noreferrer");
+          } else {
+            push({ type: "error", content: `open: unknown target '${arg}'` });
+          }
           break;
+        }
         case "clear":
         case "cls":
           setLines([]);
-          break;
-        case "exit":
-        case "logout":
-          push({ type: "error", content: "nice try. there is no exit." });
           break;
         case "echo":
           push({ type: "output", content: args.join(" ") });
@@ -290,21 +216,57 @@ export function Terminal() {
         case "date":
           push({ type: "output", content: new Date().toString() });
           break;
-        case "uname":
-          push({ type: "output", content: "HayaseOS 6.6.6-momo x86_64 GNU/Linux" });
-          break;
-        case "neofetch":
-          push({ type: "output", content: <Neofetch /> });
+        case "exit":
+        case "logout":
+          push({ type: "error", content: "There is no escape from the terminal." });
           break;
         default:
-          push({
-            type: "error",
-            content: `command not found: ${name} — type 'help' for a list`,
-          });
+          push({ type: "error", content: `bash: command not found. Type 'help'` });
       }
     },
     [push],
   );
+
+  // Boot sequence (desktop only)
+  useEffect(() => {
+    if (mobile) return;
+    let cancelled = false;
+    let i = 0;
+    const tick = () => {
+      if (cancelled) return;
+      if (i < BOOT_LINES.length) {
+        push({ type: "system", content: BOOT_LINES[i] });
+        i++;
+        setTimeout(tick, 180 + Math.random() * 140);
+      } else {
+        push({ type: "ascii", content: BANNER });
+        setBooted(true);
+      }
+    };
+    tick();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobile]);
+
+  // Mobile: pre-run common commands
+  useEffect(() => {
+    if (!mobile) return;
+    push({ type: "ascii", content: BANNER });
+    push({ type: "system", content: "Welcome, Visitor. Showing pre-run commands ↓" });
+    const cmds = ["whoami", "cat about.txt", "ls projects/", "cat skills.txt", "cat experience.txt"];
+    cmds.forEach((c) => run(c, { silent: false }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobile]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [lines]);
+
+  useEffect(() => {
+    if (booted && !mobile) inputRef.current?.focus();
+  }, [booted, mobile]);
+
+  const focusInput = () => inputRef.current?.focus();
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -332,11 +294,6 @@ export function Terminal() {
         setHIdx(idx);
         setInput(history[idx]);
       }
-    } else if (e.key === "Tab") {
-      e.preventDefault();
-      const cmds = CMD_HELP.map((c) => c[0].split(" ")[0]);
-      const match = cmds.find((c) => c.startsWith(input));
-      if (match) setInput(match);
     } else if (e.key === "l" && e.ctrlKey) {
       e.preventDefault();
       setLines([]);
@@ -344,37 +301,34 @@ export function Terminal() {
   };
 
   const quickButtons = useMemo(
-    () => ["help", "about", "skills", "projects", "contact"],
+    () => ["help", "cat about.txt", "ls projects/", "cat skills.txt", "open resume"],
     [],
   );
 
   return (
     <div
-      className="relative mx-auto flex h-[100dvh] w-full max-w-6xl flex-col p-2 sm:p-6"
+      className="relative mx-auto flex w-full max-w-6xl flex-col"
       onClick={focusInput}
     >
       {/* Window chrome */}
-      <div className="flex items-center gap-2 rounded-t-lg border border-border border-b-0 bg-card/70 px-3 py-2 backdrop-blur">
+      <div className="flex items-center gap-2 rounded-t-md border border-border border-b-0 bg-card/70 px-3 py-2 backdrop-blur">
         <span className="h-3 w-3 rounded-full bg-terminal-red/80" />
         <span className="h-3 w-3 rounded-full bg-terminal-yellow/80" />
         <span className="h-3 w-3 rounded-full bg-terminal-green/80" />
-        <span className="ml-3 text-xs text-muted-foreground">
-          momo@hayase: ~/portfolio — zsh — 132×42
-        </span>
-        <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
-          {new Date().toLocaleString()}
+        <span className="ml-3 truncate text-xs text-muted-foreground">
+          developer-labs@portfolio: ~ — bash
         </span>
       </div>
 
       {/* Terminal body */}
       <div
         ref={scrollRef}
-        className="flicker flex-1 overflow-y-auto rounded-b-lg border border-border bg-card/40 p-4 text-[13px] leading-relaxed backdrop-blur sm:text-sm"
+        className="flicker max-h-[70dvh] min-h-[60dvh] flex-1 overflow-y-auto rounded-b-md border border-border bg-card/40 p-3 text-[12.5px] leading-relaxed backdrop-blur sm:p-4 sm:text-sm"
       >
         {lines.map((l) => (
           <div key={l.id} className={lineClass(l.type)}>
-            {typeof l.content === "string" && l.type === "ascii" ? (
-              <pre className="text-glow text-terminal-green text-[10px] sm:text-xs leading-tight">
+            {l.type === "ascii" && typeof l.content === "string" ? (
+              <pre className="text-glow text-terminal-green text-[8px] sm:text-xs leading-tight">
                 {l.content}
               </pre>
             ) : (
@@ -383,7 +337,7 @@ export function Terminal() {
           </div>
         ))}
 
-        {booted && (
+        {booted && !mobile && (
           <div className="flex items-center gap-2">
             <Prompt />
             <input
@@ -399,28 +353,69 @@ export function Terminal() {
             />
           </div>
         )}
+
+        {mobile && (
+          <div className="mt-2 flex items-center gap-2">
+            <Prompt />
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKey}
+              spellCheck={false}
+              autoComplete="off"
+              autoCapitalize="off"
+              placeholder="tap a chip below or type…"
+              className="flex-1 bg-transparent text-foreground caret-terminal-green outline-none placeholder:text-muted-foreground/60"
+              aria-label="terminal input"
+            />
+          </div>
+        )}
       </div>
 
       {/* Quick chips */}
-      {booted && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {quickButtons.map((c) => (
-            <button
-              key={c}
-              onClick={(e) => {
-                e.stopPropagation();
-                run(c);
-                focusInput();
-              }}
-              className="rounded border border-terminal-green/40 px-2 py-1 text-xs text-terminal-green transition hover:bg-terminal-green hover:text-primary-foreground"
-            >
-              $ {c}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {quickButtons.map((c) => (
+          <button
+            key={c}
+            onClick={(e) => {
+              e.stopPropagation();
+              run(c);
+              focusInput();
+            }}
+            className="rounded border border-terminal-green/40 px-2 py-1 text-[11px] text-terminal-green transition hover:bg-terminal-green hover:text-primary-foreground sm:text-xs"
+          >
+            $ {c}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      {matrix && <MatrixRain onClose={() => setMatrix(false)} />}
+function ProjectCard({ p }: { p: Project }) {
+  return (
+    <div className="border-l-2 border-terminal-green/60 pl-3">
+      <div className="text-terminal-green text-glow font-semibold">▸ {p.name}</div>
+      <div className="text-foreground/90">{p.tagline}</div>
+      <ul className="mt-1 space-y-0.5">
+        {p.bullets.map((b) => (
+          <li key={b} className="text-muted-foreground">  · {b}</li>
+        ))}
+      </ul>
+      <div className="mt-1 text-xs text-terminal-cyan">
+        stack :: [{p.stack.join(", ")}]
+      </div>
+      {p.link && (
+        <a
+          href={p.link}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-block text-terminal-magenta hover:underline"
+        >
+          ↗ open {p.name}
+        </a>
+      )}
     </div>
   );
 }
@@ -428,7 +423,7 @@ export function Terminal() {
 function Prompt() {
   return (
     <span className="whitespace-nowrap">
-      <span className="text-terminal-green">momo@hayase</span>
+      <span className="text-terminal-green">developer-labs@portfolio</span>
       <span className="text-muted-foreground">:</span>
       <span className="text-terminal-cyan">~</span>
       <span className="text-muted-foreground">$</span>
@@ -451,76 +446,4 @@ function lineClass(t: Line["type"]) {
     default:
       return "text-foreground";
   }
-}
-
-function Neofetch() {
-  return (
-    <div className="grid grid-cols-[auto_1fr] gap-x-6">
-      <pre className="text-terminal-magenta text-[10px] leading-tight">{`
-        .--.
-       |o_o |
-       |:_/ |
-      //   \\ \\
-     (|     | )
-    /'\\_   _/\`\\
-    \\___)=(___/
-`}</pre>
-      <div className="text-sm self-center space-y-0.5">
-        <div><span className="text-terminal-cyan">{PROFILE.handle}</span></div>
-        <div className="text-terminal-dim">─────────────────</div>
-        <div><span className="text-terminal-yellow">OS</span>: HayaseOS 6.6.6</div>
-        <div><span className="text-terminal-yellow">Shell</span>: zsh 5.9</div>
-        <div><span className="text-terminal-yellow">Editor</span>: nvim</div>
-        <div><span className="text-terminal-yellow">CPU</span>: hayase-cortex (16) @ 4.2GHz</div>
-        <div><span className="text-terminal-yellow">Memory</span>: 4096MiB / 65536MiB</div>
-        <div><span className="text-terminal-yellow">Uptime</span>: ∞</div>
-      </div>
-    </div>
-  );
-}
-
-function MatrixRain({ onClose }: { onClose: () => void }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const c = ref.current!;
-    const ctx = c.getContext("2d")!;
-    const resize = () => {
-      c.width = window.innerWidth;
-      c.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-    const fontSize = 16;
-    const cols = () => Math.floor(c.width / fontSize);
-    let drops = Array(cols()).fill(1);
-    const chars = "アァカサタナハマヤラワ0123456789ABCDEF$#@%&*";
-    const draw = () => {
-      ctx.fillStyle = "rgba(10,18,12,0.08)";
-      ctx.fillRect(0, 0, c.width, c.height);
-      ctx.fillStyle = "#7CFC9E";
-      ctx.font = `${fontSize}px monospace`;
-      for (let i = 0; i < drops.length; i++) {
-        const t = chars[Math.floor(Math.random() * chars.length)];
-        ctx.fillText(t, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
-      }
-    };
-    const id = setInterval(draw, 45);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
-  return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-[60] cursor-pointer bg-background/80"
-    >
-      <canvas ref={ref} className="block h-full w-full" />
-      <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-terminal-green">
-        click anywhere to disconnect
-      </div>
-    </div>
-  );
 }
