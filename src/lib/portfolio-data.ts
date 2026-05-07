@@ -1,72 +1,113 @@
 export const PROFILE = {
   name: "Prabakaran P",
   alias: "Momo Hayase",
-  handle: "momo@hayase",
-  role: "Full-Stack Developer · Systems Tinkerer",
-  location: "Earth / Terminal#1",
-  email: "prabakaran@hayase.dev",
-  github: "https://github.com/momohayase",
-  linkedin: "https://linkedin.com/in/prabakaran-p",
-  twitter: "https://twitter.com/momohayase",
+  handle: "developer-labs@portfolio",
+  role: "Founder of Developer Labs | Backend Architect | LLVM & AI Enthusiast",
+  github: "https://github.com/Prabakaran202",
+  resume: "/resume.pdf",
+  tamizhiForge: "#tamizhi-forge",
 };
 
-export const ABOUT = `I'm Prabakaran P — known online as "Momo Hayase".
-I build web systems, automate boring things, and spend too much
-time inside terminals. Comfortable across the stack: TypeScript,
-Python, Rust, Go, plus the assorted plumbing that keeps it all alive.
+export const ABOUT = `Name : Prabakaran P  (alias: Momo Hayase)
+Role : Founder of Developer Labs | Backend Architect | LLVM & AI Enthusiast
 
-Currently: shipping side-projects, breaking production locally,
-and learning whatever rabbit hole the week throws at me.`;
+Bio  : BCA student with deep passion for System-Level Programming and
+       Backend Architecture. Through Developer Labs, building tools that
+       simplify the developer's workflow — from Linux kernel internals
+       to cloud deployments.`;
 
-export const SKILLS = {
-  languages: ["TypeScript", "Python", "Rust", "Go", "C", "SQL"],
-  frontend: ["React", "Next.js", "TanStack", "Tailwind", "Three.js"],
-  backend: ["Node.js", "FastAPI", "Postgres", "Redis", "gRPC"],
-  devops: ["Docker", "Linux", "Nginx", "Cloudflare", "GitHub Actions"],
-  tools: ["Neovim", "tmux", "zsh", "git", "ffmpeg"],
+export const SKILLS = `── Core Systems ─────────────────────────────
+   LLVM Infrastructure · Compiler Design · DNA-VM Logic
+
+── Backend ──────────────────────────────────
+   FastAPI · Python (Expert) · SQL Engine Optimization
+
+── DevOps / Linux ───────────────────────────
+   Arch Linux · Manjaro · Termux · Git/GitHub · Render / Vercel
+
+── Frontend ─────────────────────────────────
+   React · Next.js  (for Dev Tools UI)`;
+
+export const EXPERIENCE = `▸ Founder @ Developer Labs
+    Open-source developer tooling ecosystem.
+
+▸ Backend Developer Intern @ Neoskillz
+    Production FastAPI services & data pipelines.
+
+▸ Community Lead @ BackendDeveloperHub
+    Mentoring aspiring backend engineers.`;
+
+export type Project = {
+  slug: string;
+  name: string;
+  tagline: string;
+  bullets: string[];
+  stack: string[];
+  link?: string;
 };
 
-export const PROJECTS = [
+export const PROJECTS: Project[] = [
   {
-    name: "kernel-cat",
-    desc: "A tiny syscall-tracing CLI written in Rust. eBPF-based.",
-    stack: ["Rust", "eBPF", "Linux"],
-    url: "https://github.com/momohayase/kernel-cat",
+    slug: "tamizhi",
+    name: "Tamizhi Language",
+    tagline: "Linux-native, LLVM-based compiled programming language.",
+    bullets: [
+      "3-pass parser architecture",
+      "Universal IR backend",
+      "Native code generation via LLVM",
+    ],
+    stack: ["C", "LLVM-C", "Python"],
   },
   {
-    name: "lofi-tunnel",
-    desc: "Self-hosted reverse-proxy + lofi radio. Because why not.",
-    stack: ["Go", "WebRTC", "Docker"],
-    url: "https://github.com/momohayase/lofi-tunnel",
+    slug: "tamizhi-forge",
+    name: "Tamizhi Forge IDE",
+    tagline: "Modern glassmorphic online IDE for Tamizhi.",
+    bullets: [
+      "Live AST visualizer",
+      "Embedded terminal",
+      "Monaco-powered editor",
+    ],
+    stack: ["Next.js", "Monaco Editor", "Tailwind CSS"],
+    link: "#tamizhi-forge",
   },
   {
-    name: "neon.nvim",
-    desc: "A Neovim colorscheme tuned for late nights and cyberpunk vibes.",
-    stack: ["Lua", "Neovim"],
-    url: "https://github.com/momohayase/neon.nvim",
+    slug: "dna-vm",
+    name: "DNA-VM",
+    tagline: "Futuristic binary AOT storage system.",
+    bullets: [
+      "Encodes machine code into DNA sequences",
+      "Custom decode pipeline",
+    ],
+    stack: ["C", "Machine Logic"],
   },
   {
-    name: "packet-poet",
-    desc: "Turns network captures into haikus. Useless. Beautiful.",
-    stack: ["Python", "Scapy"],
-    url: "https://github.com/momohayase/packet-poet",
-  },
-];
-
-export const EXPERIENCE = [
-  {
-    when: "2024 — present",
-    where: "Freelance / Independent",
-    what: "Building products, tooling, and infrastructure for small teams.",
+    slug: "ai-api-butler",
+    name: "AI-API-Butler",
+    tagline: "Intelligent API orchestration layer.",
+    bullets: [
+      "Manages multi-model AI interactions",
+      "Simplified, unified REST surface",
+    ],
+    stack: ["FastAPI", "Python", "REST APIs"],
   },
   {
-    when: "2022 — 2024",
-    where: "Hayase Labs",
-    what: "Lead engineer on real-time data pipelines and dashboards.",
+    slug: "bdh-linux",
+    name: "BDH-Linux",
+    tagline: "Open-source CLI tool for backend devs.",
+    bullets: [
+      "Automates backend env setup on Arch & Manjaro",
+      "One-shot reproducible installs",
+    ],
+    stack: ["Shell", "Python"],
   },
   {
-    when: "2020 — 2022",
-    where: "Various Startups",
-    what: "Full-stack: React, Node, Postgres. Shipped, broke, fixed.",
+    slug: "bdh-fastapi-new",
+    name: "bdh-fastapi-new",
+    tagline: "Advanced FastAPI scaffolding CLI.",
+    bullets: [
+      "Rapid backend project initialization",
+      "Opinionated, production-ready layout",
+    ],
+    stack: ["Python"],
   },
 ];
