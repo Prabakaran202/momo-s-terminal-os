@@ -1,0 +1,7 @@
+/* Global CSS variables. Component styling primarily uses Tailwind tokens
+   in src/styles.css; these are kept for non-Tailwind consumers. */
+:root {
+  --accent-cyan: #00f5ff;
+  --bg-deep: #05070a;
+  --fg-soft: #c8d1d9;
+}
